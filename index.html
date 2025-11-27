@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Vocacional — Single File</title>
+  <meta name="description" content="Test vocacional interactivo - un solo archivo HTML/CSS/JS" />
+  <style>
+    /* ====== Reset & base ====== */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#6ee7b7; --glass: rgba(255,255,255,0.04);
+      --maxw:980px; --radius:14px; --gap:18px; --accent-2:#60a5fa;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#07101a 0%, #081528 60%);color:#e6eef6}
+    main{max-width:var(--maxw);margin:28px auto;padding:22px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:var(--radius);box-shadow:0 6px 20px rgba(2,6,23,0.6);padding:20px}
+
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#042634}
+    h1{font-size:20px;margin:0}
+    p.lead{color:var(--muted);margin:6px 0 0;font-size:14px}
+
+    /* layout */
+    .grid{display:grid;grid-template-columns: 320px 1fr;gap:var(--gap)}
+    @media (max-width:920px){.grid{grid-template-columns:1fr}}
+
+    /* sidebar */
+    .sidebar{padding:12px}
+    .steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+    .step{display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px}
+    .step.active{background:var(--glass)}
+    .step .idx{width:34px;height:34px;border-radius:8px;background:#071826;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* main panels */
+    .panel{min-height:360px}
+    .center{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:28px}
+
+    /* question */
+    .question{margin-bottom:14px}
+    .qtitle{font-weight:600;margin:0 0 8px}
+    .qdesc{color:var(--muted);font-size:13px;margin:0 0 12px}
+    .options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media (max-width:520px){.options{grid-template-columns:1fr}}
+    .opt{padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid transparent}
+    .opt:hover{transform:translateY(-2px)}
+    .opt.selected{border-color:rgba(110,231,183,0.25);box-shadow:0 6px 18px rgba(6,18,29,0.5)}
+    .scale{display:flex;gap:8px;align-items:center}
+    .scale input[type=range]{flex:1}
+
+    /* controls */
+    .controls{display:flex;justify-content:space-between;gap:12px;margin-top:18px}
+    .btn{background:linear-gradient(90deg,var(--accent-2),var(--accent));padding:10px 14px;border-radius:10px;border:none;color:#012129;font-weight:700;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(255,255,255,0.04)}
+
+    /* results */
+    .result-list{display:grid;gap:12px}
+    .profession{padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.02)}
+    .profession h3{margin:0 0 6px}
+    .scorebar{height:10px;border-radius:8px;background:rgba(255,255,255,0.03);overflow:hidden}
+    .scorebar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent));width:0%}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* small helpers */
+    .tag{display:inline-block;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:12px;color:var(--muted)}
+    .note{font-size:13px;color:var(--muted)}
+
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <header>
+        <div class="brand">
+          <div class="logo">TV</div>
+          <div>
+            <h1>Test Vocacional — Interactivo</h1>
+            <p class="lead">Descubre áreas profesionales según tus intereses, habilidades y preferencias. Proyecto single-file listo para publicar.</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid">
+        <aside class="sidebar">
+          <ul class="steps" id="stepsList"></ul>
+          <div style="height:12px"></div>
+          <div class="note">Progreso: <span id="progressPercent">0%</span></div>
+        </aside>
+
+        <section class="panel" id="panelArea">
+          <!-- panels rendered by JS -->
+        </section>
+      </div>
+
+      <footer>
+        <div class="muted">Diseñado para prototipos, apto para publicar en GitHub Pages. Personaliza preguntas y mapeos en el archivo.</div>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    /*************** DATA: preguntas y profesiones ******************/
+    // Cada pregunta tiene: id, texto, tipo (categoria), opciones (si aplica) o tipo:scale
+    const QUESTIONS = [
+      {id:'i_art', title:'¿Te interesa trabajar con arte, diseño o estética?', type:'interests', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'i_science', title:'¿Disfrutas resolver problemas científicos o experimentar?', type:'interests', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'i_tech', title:'¿Te atrae la tecnología, programación o ingeniería?', type:'interests', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'i_help', title:'¿Te motiva ayudar a las personas directamente (salud, social)?', type:'interests', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'i_business', title:'¿Te interesan la gestión, negocio y emprendimiento?', type:'interests', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+
+      {id:'s_math', title:'¿Cómo calificas tus habilidades matemáticas?', type:'skills', mode:'scale', min:0, max:10, default:6},
+      {id:'s_writing', title:'¿Cómo calificas tu redacción y comunicación escrita?', type:'skills', mode:'scale', min:0, max:10, default:5},
+      {id:'s_manual', title:'¿Te consideras hábil con actividades prácticas o manuales?', type:'skills', mode:'scale', min:0, max:10, default:4},
+
+      {id:'p_extro', title:'¿Te consideras extrovertido y te gusta trabajar en equipo?', type:'personality', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'p_lead', title:'¿Te interesan roles de liderazgo o toma de decisiones?', type:'personality', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+      {id:'p_detail', title:'¿Eres detallista y toleras tareas repetitivas?', type:'personality', mode:'choice', options:['Mucho','Algo','Poco','Nada']},
+
+      {id:'w_remote', title:'¿Prefieres trabajo remoto o presencial?', type:'workPref', mode:'choice', options:['Remoto','Híbrido','Presencial']},
+      {id:'w_creative', title:'¿Necesitas un trabajo con espacio creativo?', type:'workPref', mode:'choice', options:['Sí','A veces','No']},
+    ];
+
+    // Professions: mapping of tags and simple scoring weights
+    const PROFESSIONS = [
+      {id:'designer', title:'Diseñador / Diseñadora Gráfico(a)', tags:['creativo','visual','tecnología','manual'], description:'Crea piezas visuales, identidad y materiales gráficos; requiere sentido estético y dominio de herramientas digitales.', studies:['Diseño gráfico','Comunicación visual','Artes digitales']},
+      {id:'engineer', title:'Ingeniero / Ingeniera (Software, Civil, Industrial)', tags:['tecnología','matemáticas','analítico'], description:'Diseña y resuelve problemas técnicos; requiere pensamiento lógico, matemática y capacidad de abstracción.', studies:['Ingeniería (según rama)','Matemáticas aplicadas','Ciencias de la computación']},
+      {id:'scientist', title:'Investigador / Científico', tags:['ciencia','analítico','detallista'], description:'Realiza investigación experimental o teórica; necesita curiosidad científica y método riguroso.', studies:['Ciencias (Física, Química, Biología)','Investigación científica']},
+      {id:'doctor', title:'Profesional de la Salud (Médico, Enfermería, Psicólogo)', tags:['ayuda','social','detallista'], description:'Atiende necesidades físicas o mentales de las personas; requiere empatía y formación especializada.', studies:['Medicina','Enfermería','Psicología','Terapias']},
+      {id:'manager', title:'Gestión / Administración / Negocios', tags:['negocios','liderazgo','comunicación'], description:'Planifica y dirige procesos empresariales; necesita habilidad para la toma de decisiones y coordinación.', studies:['Administración','Economía','Negocios']},
+      {id:'it_specialist', title:'Especialista en TI / Programador', tags:['tecnología','analítico','remoto'], description:'Desarrolla software, administra sistemas o trabaja con datos; alta demanda técnica y posibilidad de trabajo remoto.', studies:['Ingeniería en computación','Ciencias de la computación','Bootcamps de programación']},
+      {id:'artisan', title:'Oficios y Artesanías / Técnico', tags:['manual','creativo','presencial'], description:'Trabajos prácticos y manuales (electricidad, carpintería, mecánica); requieren destreza y formación técnica.', studies:['Formación técnica','Talleres profesionales','Escuelas técnicas']},
+      {id:'teacher', title:'Docente / Educación', tags:['social','comunicación','liderazgo'], description:'Enseña y guía procesos de aprendizaje; requiere vocación por la pedagogía y comunicación.', studies:['Pedagogía','Formación docente','Especializaciones']}
+    ];
+
+    // opción -> valor para elección cualitativa
+    const CHOICE_VALUE = {'Mucho':3,'Sí':3,'Remoto':2,'Híbrido':1,'Presencial':0,'Algo':2,'Poco':1,'Nada':0,'A veces':1};
+
+    /*************** ESTADO ******************/
+    let state = {currentStep:0, answers:{}};
+
+    /*************** RENDER: pasos/side **********/
+    const steps = [
+      {id:'inicio', title:'Inicio', desc:'Presentación'},
+      {id:'test', title:'Test', desc:'Cuestionario'},
+      {id:'result', title:'Resultados', desc:'Recomendaciones'},
+      {id:'study', title:'Recomendaciones Académicas', desc:'Áreas y opciones'}
+    ];
+
+    function renderSteps(){
+      const ul = document.getElementById('stepsList'); ul.innerHTML='';
+      steps.forEach((s, idx)=>{
+        const li = document.createElement('li'); li.className = 'step ' + (idx===state.currentStep? 'active':'');
+        li.innerHTML = `<div class=idx>${idx+1}</div><div><div style="font-weight:700">${s.title}</div><div class=muted>${s.desc}</div></div>`;
+        ul.appendChild(li);
+      })
+    }
+
+    /*************** RENDER: main panel **********/
+    function renderPanel(){
+      const panel = document.getElementById('panelArea'); panel.innerHTML='';
+      if(state.currentStep===0){ renderStart(panel); }
+      else if(state.currentStep===1){ renderTest(panel); }
+      else if(state.currentStep===2){ renderResults(panel); }
+      else if(state.currentStep===3){ renderStudies(panel); }
+      renderSteps(); updateProgress();
+    }
+
+    function updateProgress(){
+      const answered = Object.keys(state.answers).length;
+      const total = QUESTIONS.length;
+      const percent = Math.round((answered/total)*100);
+      document.getElementById('progressPercent').innerText = percent + '%';
+    }
+
+    /*************** START **********/
+    function renderStart(container){
+      const div = document.createElement('div'); div.className='center';
+      div.innerHTML = `
+        <h2>Bienvenido al Test Vocacional</h2>
+        <p class="muted" style="max-width:640px">Este test corto te guiará hacia profesiones y áreas de estudio probables según tus respuestas. Contesta con sinceridad; puedes cambiar respuestas antes de ver el resultado.</p>
+        <div style="height:14px"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+          <button class="btn" id="startBtn">Comenzar Test</button>
+          <button class="btn secondary" id="examplesBtn">Ver ejemplos de profesiones</button>
+        </div>
+      `;
+      container.appendChild(div);
+      document.getElementById('startBtn').onclick = ()=>{ state.currentStep=1; renderPanel(); scrollTop(); };
+      document.getElementById('examplesBtn').onclick = ()=>{ state.currentStep=2; renderPanel(); }
+    }
+
+    /*************** TEST **********/
+    let qIndex = 0; // index within QUESTIONS when rendering test
+    function renderTest(container){
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>Cuestionario</h2><div class=tag>${Object.keys(state.answers).length}/${QUESTIONS.length} respondidas</div></div>`;
+
+      const card = document.createElement('div'); card.className='card';
+      card.style.padding='18px';
+
+      const q = QUESTIONS[qIndex];
+      const qbox = document.createElement('div'); qbox.className='question';
+      qbox.innerHTML = `<div class="qtitle">${q.title}</div><div class="qdesc">Categoria: ${q.type}</div>`;
+
+      // render options
+      const opts = document.createElement('div');
+      if(q.mode==='choice'){
+        opts.className='options';
+        q.options.forEach(opt=>{
+          const o = document.createElement('div'); o.className='opt'; o.innerHTML = `<div style="font-weight:600">${opt}</div>`;
+          const key = q.id; if(state.answers[key]===opt) o.classList.add('selected');
+          o.onclick = ()=>{ state.answers[key]=opt; saveAndContinue(); renderTest(container); };
+          opts.appendChild(o);
+        })
+      } else if(q.mode==='scale'){
+        const key = q.id; opts.innerHTML = `
+          <div style="display:flex;gap:10px;align-items:center">
+            <span class=muted>0</span>
+            <input type=range min=${q.min} max=${q.max} value=${state.answers[key] ?? q.default} id="r_${key}">
+            <span class=muted>${q.max}</span>
+            <div style="width:90px;text-align:center" id="rlabel_${key}">${state.answers[key] ?? q.default}</div>
+          </div>
+        `;
+        opts.appendChild(opts.firstChild);
+      }
+
+      qbox.appendChild(opts);
+      card.appendChild(qbox);
+
+      // controls
+      const controls = document.createElement('div'); controls.className='controls';
+      const prevBtn = document.createElement('button'); prevBtn.className='btn secondary'; prevBtn.innerText='Anterior';
+      prevBtn.onclick = ()=>{ if(qIndex>0) qIndex--; renderTest(container); };
+      const nextBtn = document.createElement('button'); nextBtn.className='btn'; nextBtn.innerText= qIndex<QUESTIONS.length-1 ? 'Siguiente':'Ver Resultados';
+      nextBtn.onclick = ()=>{ if(q.mode==='scale'){ const key=q.id; const val = document.getElementById('r_'+key).value; state.answers[key]=Number(val); }
+        if(qIndex<QUESTIONS.length-1){ qIndex++; renderTest(container); } else { state.currentStep=2; renderPanel(); }
+      };
+      controls.appendChild(prevBtn); controls.appendChild(nextBtn);
+      card.appendChild(controls);
+
+      // quick nav of questions
+      const nav = document.createElement('div'); nav.style.marginTop='12px'; nav.className='muted';
+      nav.innerHTML = `Pregunta ${qIndex+1} de ${QUESTIONS.length}. Puedes navegar con "Anterior" / "Siguiente" o hacer clic en opciones.`;
+      card.appendChild(nav);
+
+      wrapper.appendChild(card);
+      container.appendChild(wrapper);
+
+      // attach range update
+      if(q.mode==='scale'){
+        const key=q.id; const range = document.getElementById('r_'+key); const label = document.getElementById('rlabel_'+key);
+        range.oninput = ()=>{ label.innerText = range.value; };
+        range.onchange = ()=>{ state.answers[key]=Number(range.value); updateProgress(); }
+      }
+    }
+
+    function saveAndContinue(){ updateProgress(); }
+
+    /*************** RESULTADOS: algoritmo simple de puntuación ******************/
+    function calculateScores(){
+      // construct category scores
+      const scores = {};
+      // initialize
+      PROFESSIONS.forEach(p=>scores[p.id]=0);
+
+      // map answers to weights for profession tags
+      const a = state.answers;
+      // interests choices
+      QUESTIONS.filter(q=>q.mode==='choice').forEach(q=>{
+        const val = a[q.id]; if(val===undefined) return;
+        const v = CHOICE_VALUE[val] ?? 0;
+        // heuristics
+        if(q.id.startsWith('i_')){
+          if(q.id==='i_art'){ addTo(['designer','artisan'], v); }
+          if(q.id==='i_science'){ addTo(['scientist','engineer'], v); }
+          if(q.id==='i_tech'){ addTo(['it_specialist','engineer'], v); }
+          if(q.id==='i_help'){ addTo(['doctor','teacher'], v); }
+          if(q.id==='i_business'){ addTo(['manager','engineer'], v); }
+        }
+        if(q.id.startsWith('p_')){
+          if(q.id==='p_extro'){ addTo(['teacher','manager'], v); }
+          if(q.id==='p_lead'){ addTo(['manager'], v+1); }
+          if(q.id==='p_detail'){ addTo(['scientist','doctor','engineer'], v); }
+        }
+        if(q.id.startsWith('w_')){
+          if(q.id==='w_remote'){ if(val==='Remoto') addTo(['it_specialist','engineer'],1); if(val==='Presencial') addTo(['doctor','artisan'],1); }
+          if(q.id==='w_creative'){ if(val==='Sí') addTo(['designer','artisan'],2); }
+        }
+      });
+
+      // scale answers (skills)
+      if(a['s_math']!==undefined){ addTo(['engineer','scientist','it_specialist'], Math.round(a['s_math']/3)); }
+      if(a['s_writing']!==undefined){ addTo(['teacher','manager','designer'], Math.round(a['s_writing']/3)); }
+      if(a['s_manual']!==undefined){ addTo(['artisan','designer'], Math.round(a['s_manual']/3)); }
+
+      // small normalization by applying diminishing returns
+      Object.keys(scores).forEach(k=>scores[k] = Math.round(scores[k]*10));
+
+      function addTo(ids, val){ if(!Array.isArray(ids)) ids=[ids]; ids.forEach(id=>scores[id]+=val); }
+
+      return scores;
+    }
+
+    function topProfessions(scores, n=3){
+      const arr = Object.keys(scores).map(k=>({id:k,score:scores[k]})).sort((a,b)=>b.score-a.score);
+      return arr.slice(0,n);
+    }
+
+    /*************** RENDER: results panel **********/
+    function renderResults(container){
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>Resultados</h2><div class=tag>Basado en tus respuestas</div></div>`;
+
+      const card = document.createElement('div'); card.className='card'; card.style.padding='16px';
+
+      // if not all answered, warn
+      const answered = Object.keys(state.answers).length;
+      if(answered < Math.floor(QUESTIONS.length*0.5)){
+        const warn = document.createElement('div'); warn.className='muted'; warn.style.marginBottom='10px'; warn.innerText='Advertencia: has respondido menos de la mitad de las preguntas — los resultados serán menos precisos.';
+        card.appendChild(warn);
+      }
+
+      const scores = calculateScores();
+      const tops = topProfessions(scores,4);
+
+      const list = document.createElement('div'); list.className='result-list';
+
+      tops.forEach(t=>{
+        const meta = PROFESSIONS.find(p=>p.id===t.id);
+        const prof = document.createElement('div'); prof.className='profession';
+        prof.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><h3>${meta.title}</h3><div class=muted>${meta.tags.join(' · ')}</div></div><div style="text-align:right"><div class=tag>Score ${t.score}</div></div></div>
+          <p style="margin:8px 0">${meta.description}</p>
+          <div class="scorebar" aria-hidden><i style="width:${Math.min(100, t.score)}%"></i></div>
+          <details style="margin-top:8px" open>
+            <summary style="cursor:pointer">Justificación</summary>
+            <div class="muted" style="margin-top:8px">${generateJustification(meta, scores)}</div>
+          </details>
+        `;
+        list.appendChild(prof);
+      });
+
+      card.appendChild(list);
+
+      // suggestions area
+      const rec = document.createElement('div'); rec.style.marginTop='14px';
+      rec.innerHTML = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="viewStudies">Ver recomendaciones académicas</button><button class="btn secondary" id="retry">Volver a intentar</button></div>
+      `;
+      card.appendChild(rec);
+      wrapper.appendChild(card);
+      container.appendChild(wrapper);
+
+      document.getElementById('viewStudies').onclick = ()=>{ state.currentStep=3; renderPanel(); };
+      document.getElementById('retry').onclick = ()=>{ state.answers={}; state.currentStep=1; qIndex=0; renderPanel(); }
+    }
+
+    function generateJustification(prof, scores){
+      // explain by matching tags to answered questions
+      const parts = [];
+      const a = state.answers;
+      if(!a || Object.keys(a).length===0) return 'No hay respuestas para justificar. Responde el test para obtener una justificación detallada.';
+      // check interests
+      if(a['i_art'] && (a['i_art']==='Mucho')) parts.push('Te interesa el arte y lo visual.');
+      if(a['i_tech'] && (a['i_tech']==='Mucho')) parts.push('Muestras interés por la tecnología.');
+      if(a['s_math']>=7) parts.push('Tienes alta habilidad matemática.');
+      if(a['s_writing']>=7) parts.push('Buena capacidad de comunicación escrita.');
+      if(a['p_extro'] && (a['p_extro']==='Mucho')) parts.push('Tiendes a trabajar bien en equipo.');
+
+      // join and fallback
+      if(parts.length===0) parts.push('Tus respuestas muestran una combinación mixta de intereses y habilidades.');
+      // add match to profession tags
+      parts.push('Match de etiquetas: ' + prof.tags.join(', ') + '.');
+      parts.push('Áreas de estudio sugeridas: ' + prof.studies.join('; ') + '.');
+      return parts.join(' ');
+    }
+
+    /*************** STUDIES / ACADEMIC RECOMMENDATIONS **********/
+    function renderStudies(container){
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>Recomendaciones Académicas</h2><div class=tag>Opciones de estudio concretas</div></div>`;
+      const card = document.createElement('div'); card.className='card'; card.style.padding='16px';
+
+      // take top 3
+      const scores = calculateScores(); const tops = topProfessions(scores,3);
+      tops.forEach(t=>{
+        const meta = PROFESSIONS.find(p=>p.id===t.id);
+        const div = document.createElement('div'); div.style.marginBottom='12px';
+        div.innerHTML = `
+          <h3 style="margin:0">${meta.title}</h3>
+          <div class=muted style="margin:6px 0">Carreras y formación sugerida:</div>
+          <ul>
+            ${meta.studies.map(s=>`<li>${s}</li>`).join('')}
+          </ul>
+          <div class=muted>Consejo: Investiga planes de estudio y salidas laborales; considera cursos cortos o prácticas para validar tu interés.</div>
+        `;
+        card.appendChild(div);
+      });
+
+      card.appendChild(document.createElement('hr'));
+      const back = document.createElement('div'); back.style.marginTop='8px'; back.innerHTML = '<button class="btn secondary" id="backRes">Volver a resultados</button> <button class="btn" id="exportBtn">Exportar resultado (JSON)</button>';
+      card.appendChild(back);
+      wrapper.appendChild(card);
+      container.appendChild(wrapper);
+
+      document.getElementById('backRes').onclick = ()=>{ state.currentStep=2; renderPanel(); };
+      document.getElementById('exportBtn').onclick = ()=>{ downloadResults(); };
+
+    }
+
+    function downloadResults(){
+      const scores = calculateScores(); const tops = topProfessions(scores,4);
+      const payload = {answers:state.answers, scores, tops, timestamp:(new Date()).toISOString()};
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+      const a = document.createElement('a'); a.href=dataStr; a.download='test_vocacional_resultado.json'; a.click();
+    }
+
+    /*************** UTIL **********/
+    function scrollTop(){ window.scrollTo({top:0,behavior:'smooth'}); }
+
+    // initial render
+    renderPanel();
+
+    // keyboard navigation: left/right
+    document.addEventListener('keydown', (e)=>{
+      if(state.currentStep!==1) return;
+      if(e.key==='ArrowLeft'){ if(qIndex>0){ qIndex--; renderPanel(); renderTest(document.getElementById('panelArea')); } }
+      if(e.key==='ArrowRight'){ if(qIndex<QUESTIONS.length-1){ qIndex++; renderPanel(); renderTest(document.getElementById('panelArea')); } }
+    });
+
+    /* NOTAS PARA PUBLICACIÓN EN GITHUB PAGES:
+       1) Crea un repositorio nuevo en GitHub.
+       2) Añade este archivo como index.html en la rama main.
+       3) Ve a Settings -> Pages y habilita GitHub Pages para la rama main (carpeta /root).
+       4) Espera unos segundos y tu test estará disponible en https://<tu-usuario>.github.io/<repo>/
+    */
+
+  </script>
+</body>
+</html>
